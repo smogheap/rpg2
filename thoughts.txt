@@ -1,0 +1,34 @@
+RPG2: co-operative 2-player storytelling
+
+init - one player chosen at random starts the story off:
+who is this?  - pixle needs a name and maybe title/role
+- "roooooo", "king"
+- "smeghead", "drifter"
+- "punky", "murderer"
+where are they? - place on an abstract generated backdrop
+- "the kingdom of ick"
+- "planet nerdulon-5"
+- "glamor city"
+
+player turn (first turn skips stuff in parens; got to init):
+-(optionally mark previous turn 'awesome')
+-(determine previous turn's action odds of success)
+-(move, remove, )
+- 
+- move/add character/stamp
+- motivation or internal monologue
+- dialog with any nearby character
+- action the character attempts
+- optional: THE END (if enough 'awesome' points acquired)
+- commit to story
+
+stamps - abstract 8x8 shapes that can be put as landmarks:
+- star
+- heart
+- dagger
+- blood stain
+- apple
+- ball
+
+dnd style storytelling - very abstract, maybe grid? no limits
+very limited presentation - graph paper and pen caps. imagination!

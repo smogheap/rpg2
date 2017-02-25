@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html>
+  <head>
+	<title>RPG2 - the Reciprocative Penning Game for 2 players</title>
+	<meta name="viewport" content="width=device-width, user-scalable=no"/>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+	<script src="/socket.io/socket.io.js"></script>
+	<script src="rpg2.js"></script>
+	<style>
+	  html, body {
+	  background: black;
+	  color: silver;
+	  font: 110% monospace;
+	  line-height: 200%;
+	  }
+	  a {
+	  color: limegreen;
+	  font-weight: bold;
+	  }
+	  .spinner {
+	  display: inline-block;
+	  animation-duration: 1s;
+	  animation-iteration-count: infinite;
+	  animation-name: spin;
+	  animation-timing-function: linear;
+	  }
+	  @keyframes spin {
+	  from {
+	  transform: rotate(0deg);
+	  }
+	  to {
+	  transform: rotate(360deg);
+	  }
+	  }
+	  h1, h2 {
+	  background: darkblue;
+	  margin: 0.1em 0;
+	  }
+	  h2 {
+	  background: purple;
+	  }
+	  h1:before, h2:before {
+	  content: "[-] "
+	  }
+	  h1.collapse:before, h2.collapse:before {
+	  content: "[+] "
+	  }
+	  h3 {
+	  text-align: center;
+	  }
+	  h3 .byline {
+	  display: block;
+	  font-size: 75%;
+	  }
+	  blockquote {
+	  margin-top: 0;
+	  }
+	  #room label {
+	  display: block;
+	  }
+	  .awesome {
+	  border: thin solid orange;
+	  }
+	  #pages canvas {
+	  margin-top: 0.5em;
+	  width: 33%;
+	  }
+	  #pages div {
+	  clear: both;
+	  padding-top: 1em;
+	  }
+	  #pages div:first-child {
+	  padding-top: inherit;
+	  }
+	  #pages div:nth-child(even) canvas {
+	  float: right;
+	  margin-left: 1em;
+	  }
+	  #pages div:nth-child(odd) canvas {
+	  float: left;
+	  margin-right: 1em;
+	  }
+	  #pages span {
+	  }
+	  input {
+	  vertical-align: middle;
+	  }
+	  input[type=radio] {
+	  vertical-align: inherit;
+	  }
+	  option {
+	  background-repeat: no-repeat;
+	  background-size: 1em 1em;
+	  background-position: 0% 50%;
+	  }
+	  .expand {
+	  margin-bottom: 0.5em;
+	  }
+	  h1.collapse + .expand, h2.collapse + .expand {
+	  display: none;
+	  }
+	  canvas.scene {
+	  width: 95vw;
+	  }
+	  canvas {
+	  image-rendering: pixelated;
+	  image-rendering: -moz-crisp-edges;
+	  image-rendering: -o-crisp-edges;
+	  -ms-interpolation-mode: nearest-neighbor;
+	  }
+	  input[type="checkbox"] {
+	  /*transform: scale(1.25, 1.25);*/
+	  }
+	  textarea {
+	  display: block;
+	  height: 6em;
+	  width: 95%;
+	  }
+	  .prog{
+	  color: orange;
+	  }
+	  .ress{
+	  color: grey;
+	  }
+	  label {
+	  white-space: nowrap;
+	  }
+	  label canvas, canvas.char {
+	  transform: scale(3, 3);
+	  padding: 0 8px;
+	  margin: 0 0.25em 0 0.1em;
+	  }
+	  .hidden {
+	  display: none;
+	  }
+	</style>
+  </head>
+  <body>
+	<img src="gpx.png" class="hidden">
+
+	<div id="room">
+	  Welcome to RPG2: the Reciprocative Penning Game for 2 players!
+	  Meet here with a friend or a friend-to-be, and take turns crafting any
+	  sort of tale you can imagine.  There are just a few rules:
+	  <ul>
+		<li>You wait while your partner adds a page and vice-versa.</li>
+		<li>If your partner's latest page is <span class="awesome">awesome</span>, mark it so!</li>
+		<li>After 5 <span class="awesome">awesome</span> pages, either player may finish the story with "THE END"!</li>
+	  </ul>
+	  No information is collected or kept by the server.
+	  RPG2 is Free Software.  Grab the code at:<br>
+	  <a href="https://github.com/smogheap/RPG2">https://github.com/smogheap/RPG2</a>
+	  <br><br>
+	  TODO: link some sample stories
+	  <ol>
+		<li>Pick a username:
+		  <input id="localplayer" placeholder="Author">
+		  <button id="signin" disabled>Sign in</button>
+		</li>
+		<li>Pick a partner:<br>
+		  <div class="userlist">
+			<label>
+			  <input type="radio" name="partner" value="local" checked>
+			  Local second player named:
+			  <input id="localplayer2" placeholder="Partner">
+			</label>
+			<span id="status">
+			  <span class="spinner">/</span> Connected and looking for others...
+			</span>
+		  </div>
+		</li>
+		<li><button id="begin">Begin!</button></li>
+	  </ol>
+	  <br>
+	</div>
+
+	<div id="story" class="hidden">
+
+	  <div id="scene">
+	  <h1 id="scenehead">Scene</h1>
+	  <div class="expand">
+		<canvas class="scene" width=128 height=64></canvas>
+		<span id="placename"></span>
+		<a href="#" onclick="alert('This display is like the graphpaper map for D&D or the diner table used to plan a heist.  It is a quick and dirty illustration you can update.'); return false;">[?]</a>
+	  </div>
+	  </div>
+
+	  <div id="wait" class="hidden">
+		<span class="spinner">(&nbsp;&nbsp;&nbsp;)</span>
+		<span id="partner">Your partner</span> is writing...
+	  </div>
+
+	  <div id="init">
+	  <h1>Begin</h1>
+ 	  <div class="expand">
+		Title:
+		<blockquote>
+		  <input id="title" placeholder="Story Title">
+		  <a href="#" onclick="alert('Pick something very abstract or random if you cannot think of a good title.  It may inspire story events, or be artfully detached!'); return false;">[?]</a>
+		</blockquote>
+		First character:
+		<blockquote>
+		  <canvas id="firstchar" class="char"></canvas><button>Roll</button>
+		  <input id="firstcharname" placeholder="Name">
+		  <a href="#" onclick="alert('Consider using a title or nickname, like King Shmoe or Clever Jake.  One extra word can inject a lot of character!'); return false;">[?]</a>
+		  <br>
+		  Position: <a href="#firstchar" class="place">Place...</a>
+		</blockquote>
+		Setting:
+		<blockquote>
+		  <input id="placeinput" placeholder="Placename">
+		  <a href="#" onclick="alert('Is that a continent?  A space colony?  A kitchen?  Is it a happy place?  Is it far from home?'); return false;">[?]</a>
+		  <br>
+		  Backdrop:
+		  <button id="bgroll">Roll</button>
+		  Colors:
+		  <input type="color" id="bgcolor1">
+		  <input type="color" id="bgcolor2">
+		  <button id="colroll">Roll</button>
+		</blockquote>
+		Plot:
+		<blockquote>
+		  <textarea id="initplot"></textarea>
+		</blockquote>
+		<button id="initpost">Post</button>
+	  </div>
+	  </div>
+
+	  <h1>Story</h1>
+	  <div class="expand">
+		<div id="pages"></div>
+	  </div>
+
+	  <div id="main" class="hidden">
+	  <h1>Continue</h1>
+ 	  <div class="expand">
+		<p>
+		  <h2>Resolve Previous Page</h2>
+		  <div class="expand">
+			<label class="awesome">
+			  <input id="awesome" type="checkbox"> Awesome!
+			</label>
+			<a href="#" onclick="alert('If the last page is awesome, mark it as such!'); return false;">[?]</a>
+			<br>
+			Success odds:
+			<select id="chanceodds">
+			  <option value="1">1</option>
+			  <option value="2">2</option>
+			  <option value="3">3</option>
+			  <option value="4">4</option>
+			  <option value="5">5</option>
+			  <option value="6">6</option>
+			  <option value="7">7</option>
+			  <option value="8">8</option>
+			  <option value="9">9</option>
+			</select>
+			of 10
+			<button id="chanceroll">Roll</button>
+			<a href="#" onclick="alert('Does some event depend on fate?  Use this anytime you need a coin flip or a die roll.'); return false;">[?]</a>
+			<span id="chanceresult"></span>
+		  </div>
+		  <h2>New Page</h2>
+		  <div class="expand">
+			Scene update:
+			<select class="sceneupdate">
+			  <option value="">None</option>
+			  <option value="char">Add a character</option>
+			  <option value="stamp">Add a symbol</option>
+			  <option value="move">Move things</option>
+			  <option value="remove">Remove things</option>
+			</select>
+			<blockquote>
+			  <div class="sceneupdate char hidden">
+				<canvas id="addchar" class="char"></canvas><button>Roll</button>
+				<input id="addcharname" placeholder="Name">
+				<br>
+				Position: <a href="#addchar" class="place">Place...</a>
+			  </div>
+			  <div class="sceneupdate stamp hidden">
+				<span class="stamp"></span>
+				<input id="stampname" placeholder="identifier...">
+				<br>
+				Position: <a href="#addstamp" class="place">Place...</a>
+			  </div>
+			  <div class="sceneupdate move hidden">
+				<select class="thing" id="movething"></select>
+				Position: <a href="#movething" class="place">Place...</a>
+			  </div>
+			  <div class="sceneupdate remove hidden">
+				<select id="removething" class="thing"></select>
+				<button id="remove">Remove</button>
+			  </div>
+			</blockquote>
+			Plot:
+			<blockquote>
+			  <textarea id="plot"></textarea>
+			  <label>
+				<input id="endcheck" type="checkbox" disabled>
+				<span id="theend"><span class="prog">T</span><span class="ress">HE END</span></span>
+			  </label>
+			  <a href="#" onclick="alert('You can end the story anytime once enough awesome pages happen.'); return false;">[?]</a>
+			</blockquote>
+			<button id="revert">Revert</button><br>
+			<button id="post">Post</button>
+		  </div>
+		</p>
+	  </div>
+	  </div>
+
+	  <div id="done" class="hidden">
+		Thank you for playing!
+		<br>
+		<a id="download" href="#" class="hidden">Download this story</a>
+		<br>
+		<a id="restart" href="#">Play again</a>
+	  </div>
+	</div>
+  </body>
+</html>
