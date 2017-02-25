@@ -160,10 +160,11 @@
 		<li>Pick a partner:<br>
 		  <div class="userlist">
 			<label>
-			  <input type="radio" name="partner" value="local" checked>
+			  <input id="localradio" type="radio" name="partner" value="local" checked>
 			  Local second player named:
 			  <input id="localplayer2" placeholder="Partner">
 			</label>
+			<div id="remoteusers"></div>
 			<span id="status">
 			  <span class="spinner">/</span> Connected and looking for others...
 			</span>
@@ -183,11 +184,6 @@
 		<span id="placename"></span>
 		<a href="#" onclick="alert('This display is like the graphpaper map for D&D or the diner table used to plan a heist.  It is a quick and dirty illustration you can update.'); return false;">[?]</a>
 	  </div>
-	  </div>
-
-	  <div id="wait" class="hidden">
-		<span class="spinner">(&nbsp;&nbsp;&nbsp;)</span>
-		<span id="partner">Your partner</span> is writing...
 	  </div>
 
 	  <div id="init">
@@ -306,14 +302,19 @@
 		</p>
 	  </div>
 	  </div>
+	</div>
 
-	  <div id="done" class="hidden">
-		Thank you for playing!
-		<br>
-		<a id="download" href="#" class="hidden">Download this story</a>
-		<br>
-		<a id="restart" href="#">Play again</a>
-	  </div>
+	<div id="wait" class="hidden">
+	  <span class="spinner">(&nbsp;&nbsp;&nbsp;)</span>
+	  Waiting for <span id="partner">Your partner</span>...
+	</div>
+
+	<div id="done" class="hidden">
+	  Thank you for playing!
+	  <br>
+	  <a id="download" href="#" class="hidden">Download this story</a>
+	  <br>
+	  <a id="restart" href="#">Play again</a>
 	</div>
   </body>
 </html>

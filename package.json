@@ -4,6 +4,6 @@
   "description": "Reciprocative Penning Game for 2 players",
   "dependencies": {
     "express": "^4.14.1",
-    "socket.io": "^1.7.2"
+    "socket.io": "^1.7.3"
   }
 }

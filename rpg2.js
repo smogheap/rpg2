@@ -46,7 +46,12 @@ RPG = {
 	},
 	scrollBack: -1,
 	sbHide: false,
-	socket: null
+
+	socket: null,
+	online: false,
+	partner: "local",
+	wait: false,
+	lobby: {}
 };
 
 // crappy, predictable, seedable RNG
@@ -236,18 +241,18 @@ function setting(targetCtx) {
 
 function render(ctx, page) {
 	ctx = ctx || RPG.ctx;
-	page = page || RPG.story.scene;
+	page = page || RPG.story;
 	setting(ctx);
 	if(RPG.input.place && ctx === RPG.ctx) {
 		ctx.fillStyle = "white";
 		ctx.fillRect(RPG.input.pointer.x, 0, 1, ctx.canvas.height);
 		ctx.fillRect(0, RPG.input.pointer.y, ctx.canvas.width, 1);
 	}
-	page.characters.every(function(c) {
+	page.scene.characters.every(function(c) {
 		draw(ctx, c);
 		return true;
 	});
-	page.stamps.every(function(s) {
+	page.scene.stamps.every(function(s) {
 		ctx.drawImage(RPG.gpx, s.idx * 8, 0, 8, 8,
 					  s.x, s.y, 8, 8);
 		return true;
@@ -295,6 +300,7 @@ function renderpages() {
 		cont.appendChild(div);
 		if(page.theend) {
 			end = true;
+			RPG.wait = false;
 		}
 		return true;
 	});
@@ -394,15 +400,16 @@ function tidy() {
 			document.querySelector("#done").classList.toggle("hidden", false);
 		} else {
 			document.querySelector("#scene").classList.toggle("hidden", false);
-			document.querySelector("#main").classList.toggle("hidden", false);
+			document.querySelector("#main").classList.toggle("hidden", RPG.wait);
 			document.querySelector("#done").classList.toggle("hidden", true);
 		}
 	} else {
 		document.querySelector("#scene").classList.toggle("hidden", false);
-		document.querySelector("#init").classList.toggle("hidden", false);
+		document.querySelector("#init").classList.toggle("hidden", RPG.wait);
 		document.querySelector("#main").classList.toggle("hidden", true);
 		document.querySelector("#done").classList.toggle("hidden", true);
 	}
+	document.querySelector("#wait").classList.toggle("hidden", !RPG.wait);
 
 	var dl = document.querySelector("#download");
 	if(btoa) {
@@ -641,11 +648,12 @@ window.addEventListener("load", function() {
 					return true;
 				});
 			}
-			RPG.sbHide = document.querySelector("#scenehead").classList.contains("collapse");
-			document.querySelector("#scenehead").classList.toggle("collapse", false);
+			var scenehead = document.querySelector("#scenehead");
+			RPG.sbHide = scenehead.classList.contains("collapse");
+			scenehead.classList.toggle("collapse", false);
 			RPG.scrollBack = document.scrollingElement.scrollTop;
 			//document.scrollingElement.scrollTop = 0;
-			RPG.canvas.scrollIntoView();
+			scenehead.scrollIntoView();
 		}, {capture: true});
 	}
 	RPG.canvas.addEventListener("mousemove", mousemove);
@@ -697,8 +705,9 @@ window.addEventListener("load", function() {
 	});
 	document.querySelector("#initpost").addEventListener("click", function() {
 		var page = {
-			characters: [].concat(RPG.story.scene.characters),
-			stamps: [].concat(RPG.story.scene.stamps),
+			scene: JSON.parse(JSON.stringify(RPG.story.scene, serialize)),
+			//characters: [].concat(RPG.story.scene.characters),
+			//stamps: [].concat(RPG.story.scene.stamps),
 			plot: document.querySelector("#initplot").value
 		};
 
@@ -706,6 +715,14 @@ window.addEventListener("load", function() {
 		document.querySelector("#main").classList.toggle("hidden", false);
 
 		RPG.story.pages.push(page);
+		if(RPG.online && RPG.socket) {
+			RPG.wait = true;
+			RPG.socket.emit("pages", {
+				id: RPG.partner,
+				pages: JSON.parse(JSON.stringify(RPG.story.pages,
+												 serialize))
+			});
+		}
 		renderpages();
 	});
 	// additional page post
@@ -720,20 +737,39 @@ window.addEventListener("load", function() {
 			RPG.story.pages[RPG.story.pages.length - 1].awesome = true;
 		}
 		var page = {
-			characters: JSON.parse(JSON.stringify(RPG.story.scene.characters, serialize)),
-			stamps: JSON.parse(JSON.stringify(RPG.story.scene.stamps, serialize)),
+			scene: JSON.parse(JSON.stringify(RPG.story.scene, serialize)),
+			//characters: JSON.parse(JSON.stringify(RPG.story.scene.characters, serialize)),
+			//stamps: JSON.parse(JSON.stringify(RPG.story.scene.stamps, serialize)),
 			plot: document.querySelector("#plot").value,
 			theend: document.querySelector("#endcheck").checked
 		};
 		RPG.story.pages.push(page);
+		if(RPG.online && RPG.socket) {
+			RPG.wait = true;
+			RPG.socket.emit("pages", {
+				id: RPG.partner,
+				pages: JSON.parse(JSON.stringify(RPG.story.pages,
+												 serialize))
+			});
+		}
 		renderpages();
 	});
 
 	// begin
 	document.querySelector("#begin").addEventListener("click", function() {
-		document.querySelector("#room").classList.toggle("hidden", true);
-		document.querySelector("#story").classList.toggle("hidden", false);
-		tidy();
+		if(!RPG.socket || RPG.partner === "local") {
+			document.querySelector("#room").classList.toggle("hidden", true);
+			document.querySelector("#story").classList.toggle("hidden", false);
+			tidy();
+		} else {
+			RPG.socket.emit("invite", RPG.partner);
+			RPG.player1.name = document.querySelector("#localplayer").value;
+			RPG.player1.id = RPG.socket.id;
+			document.querySelector("#room").classList.toggle("hidden", true);
+			document.querySelector("#story").classList.toggle("hidden", true);
+			RPG.wait = true;
+			tidy();
+		}
 	});
 	// restart
 	document.querySelector("#restart").addEventListener("click", function(e) {
@@ -741,6 +777,8 @@ window.addEventListener("load", function() {
 		e.stopPropagation();
 		var label = document.querySelector("#placename");
 		empty(label);
+		RPG.online = false;
+		RPG.wait = false;
 		RPG.player1 = {
 			name: "",
 			id: "",
@@ -768,12 +806,21 @@ window.addEventListener("load", function() {
 		//window.location = window.location;
 	});
 
+	document.querySelector("#localradio").addEventListener("change", function() {
+		RPG.partner = this.value;
+	});
 	document.querySelector("#localplayer").addEventListener("change", function() {
 		RPG.player1.name = this.value;
 		RPG.player1.local = true;
 	});
 	document.querySelector("#localplayer").addEventListener("keydown", function() {
 		document.querySelector("#signin").disabled = false;
+	});
+	document.querySelector("#signin").addEventListener("click", function() {
+		if(!RPG.socket) {
+			return;
+		}
+		RPG.socket.emit("signin", document.querySelector("#localplayer").value);
 	});
 	document.querySelector("#localplayer2").addEventListener("change", function() {
 		RPG.player2.name = this.value;
@@ -784,7 +831,92 @@ window.addEventListener("load", function() {
 	try {
 		RPG.socket = io();
 		document.querySelector("#signin").disabled = false;
-		RPG.socket.on("name", function(data) {
+
+		// list of users in the lobby updated
+		RPG.socket.on("users", function(users) {
+			RPG.lobby = users;
+			var list = document.querySelector("#remoteusers");
+			empty(list);
+			var label;
+			var radio;
+			Object.keys(RPG.lobby).every(function(id) {
+				if(id === RPG.socket.id) {
+					// this is us, so we're signed in and don't need to list it
+					document.querySelector("#signin").disabled = true;
+					return true;
+				}
+				label = document.createElement("label");
+				radio = document.createElement("input");
+				radio.type = "radio";
+				radio.name = "partner";
+				radio.value = id || "error";
+				radio.addEventListener("change", function() {
+					RPG.partner = this.value;
+				});
+				label.appendChild(radio);
+				label.appendChild(document.createTextNode(RPG.lobby[id].name ||
+														  "Anonymous"));
+				list.appendChild(label);
+				return true;
+			});
+		});
+
+		// other player asked us to join
+		RPG.socket.on("invite", function(id) {
+			console.log("invite from", id);
+			var user = RPG.lobby[id] || {name: "Anonymous"};
+			if(confirm("Would you like to join a game with '" + user.name + "'?")) {
+				RPG.socket.emit("accept", id);
+				RPG.partner = id;
+				RPG.player1.name = user.name;
+				RPG.player1.id = id;
+				RPG.player2.name = document.querySelector("#localplayer").value;
+				RPG.player2.id = RPG.socket.id;
+				RPG.online = true;
+				RPG.wait = true;
+				document.querySelector("#room").classList.toggle("hidden", true);
+				document.querySelector("#story").classList.toggle("hidden", true);
+				document.querySelector("#wait").classList.toggle("hidden", false);
+			} else {
+				RPG.socket.emit("reject", id);
+			}
+		});
+
+		// other player accepted our invitation
+		RPG.socket.on("accept", function(id) {
+			console.log("accept from", id);
+			RPG.online = true;
+			RPG.wait = false;
+			RPG.player2.name = RPG.lobby[id].name;
+			RPG.player2.id = id;
+			document.querySelector("#room").classList.toggle("hidden", true);
+			document.querySelector("#story").classList.toggle("hidden", false);
+			tidy();
+		});
+
+		// other player rejected our invitation
+		RPG.socket.on("reject", function(id) {
+			console.log("reject from", id);
+			RPG.online = false;
+			RPG.wait = false;
+			if(id !== RPG.partner) {
+				// someone's being naughty
+				return;
+			}
+			document.querySelector("#room").classList.toggle("hidden", false);
+			document.querySelector("#story").classList.toggle("hidden", true);
+			var user = RPG.lobby[id] || {name: ""};
+			alert("User " + user.name + " has declined your invitation.");
+		});
+
+		// update pages
+		RPG.socket.on("pages", function(pages) {
+			console.log("new pages", pages);
+			RPG.wait = !RPG.wait;
+			RPG.story.pages = pages;
+			RPG.story.scene = JSON.parse(JSON.stringify(pages[pages.length - 1].scene));
+			document.querySelector("#story").classList.toggle("hidden", false);
+			renderpages();
 		});
 	} catch(e) {
 		var status = document.querySelector("#status");
