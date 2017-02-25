@@ -3,4 +3,17 @@ rpg2
 
 Reciprocative Penning Game for 2 players
 
-(works for local play right now, internet multiplayer coming soon!)
+
+dependencies
+------------
+  node.js
+you may also need to:
+  npm install --save socket.io
+  npm install --save express
+
+
+to run
+------
+$ node server.js
+
+then you and a friend can duel in doodles at http://yourserver:1139
