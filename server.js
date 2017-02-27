@@ -15,7 +15,7 @@ app.get("*", function(req, res) {
 });
 
 io.on("connection", function(socket) {
-	console.log("someone's here");
+	//console.log("someone's here");
 	io.emit("users", RPG.users);
 
 	//io.emit("to everyone");

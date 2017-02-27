@@ -13,15 +13,12 @@ RPG = {
 		local: false
 	},
 	input: {
-		place: false,
-		placeObj: null,
-		placeCB: null,
 		pointer: {
 			x: -1,
 			y: -1
 		}
 	},
-	p: {},
+	p: [],
 	addstamp: {},
 	story: {
 		title: "",
@@ -29,13 +26,11 @@ RPG = {
 			seed: 1,
 			color1: "#000000",
 			color2: "#888888",
-			characters: [],  // p, ...
-			stamps: []  // { shape: idx, x: x, y: y }, ...
+			stamps: []  // { shape: idx, x: x, y: y }, { p } ...
 		},
 		pages:[
 			/*
 			{
-				characters: [],
 				stamps: [],
 				plot: "",
 				awesome: false,
@@ -44,8 +39,6 @@ RPG = {
 			*/
 		]
 	},
-	scrollBack: -1,
-	sbHide: false,
 
 	socket: null,
 	online: false,
@@ -125,16 +118,14 @@ function empty(element) {
 		element.removeChild(element.firstChild);
 	}
 }
-
-function uniquename(str) {
-	//TODO fixme
-	return str;
-}
 function serialize(key, val) {
 	if(key.indexOf("canvas") >= 0) {
 		return undefined;
 	}
 	return val;
+}
+function clone(obj) {
+	return JSON.parse(JSON.stringify(obj, serialize));
 }
 
 function generate() {
@@ -162,7 +153,8 @@ function generate() {
 		}
 	}
 	for(i = 0; i < 4; ++i) {
-		p.shape.push(Math.floor(Math.random() * 255) + 1);
+		// note 127 instead of 255 to leave a gap at the bottom
+		p.shape.push(Math.floor(Math.random() * 127) + 1);
 	}
 
 	return p;
@@ -193,7 +185,8 @@ function draw(ctx, p, x, y) {
 			for(j = 0; j < 8; ++j) {
 				if(slice & Math.pow(2, j)) {
 					pctx.fillRect(i, j, 1, 1);
-					pctx.fillRect(7 - i, j, 1, 1);
+					// note 6 to squish the middle 2 cols into 1
+					pctx.fillRect(6 - i, j, 1, 1);
 				}
 			}
 			return true;
@@ -206,17 +199,22 @@ function draw(ctx, p, x, y) {
 	ctx.restore();
 }
 
-function setting(targetCtx) {
+function setting(targetCtx, scene, offX, offY, w, h) {
 	targetCtx = targetCtx || RPG.ctx;
+	scene = scene || RPG.story.scene;
+	offX = offX || 0;
+	offY = offY || 0;
+	w = w || targetCtx.canvas.width;
+	h = h || targetCtx.canvas.height;
 	var canv = document.createElement("canvas");
 	var ctx = canv.getContext("2d");
-//	jaggy(ctx);
-	canv.width = 20;
+	canv.width = 10;
 	canv.height = 10;
-	WRand.setSeed(RPG.story.scene.seed);
-	ctx.fillStyle = RPG.story.scene.color1;
+	//FIXME: transmit seed per page
+	WRand.setSeed(scene.seed);
+	ctx.fillStyle = scene.color1;
 	ctx.fillRect(0, 0, canv.width, canv.height);
-	ctx.fillStyle = RPG.story.scene.color2;
+	ctx.fillStyle = scene.color2;
 	for(var y = 0; y < canv.height; ++y) {
 		for(var x = 0; x < canv.width; ++x) {
 			ctx.globalAlpha = (WRand() % 100) / 100;
@@ -225,8 +223,8 @@ function setting(targetCtx) {
 	}
 	var scanv = document.createElement("canvas");
 	var sctx = scanv.getContext("2d");
-	scanv.width = targetCtx.canvas.width;
-	scanv.height = targetCtx.canvas.height;
+	scanv.width = w;
+	scanv.height = h;
 	sctx.drawImage(canv, 0, 0,
 				   canv.width, canv.height,
 				   0, 0,
@@ -234,27 +232,44 @@ function setting(targetCtx) {
 				   sctx.canvas.height);
 	targetCtx.drawImage(scanv, 0, 0,
 						scanv.width, scanv.height,
-						0, 0,
-						targetCtx.canvas.width,
-						targetCtx.canvas.height);
+						offX, offY, w, h);
 }
 
 function render(ctx, page) {
 	ctx = ctx || RPG.ctx;
 	page = page || RPG.story;
-	setting(ctx);
-	if(RPG.input.place && ctx === RPG.ctx) {
-		ctx.fillStyle = "white";
-		ctx.fillRect(RPG.input.pointer.x, 0, 1, ctx.canvas.height);
-		ctx.fillRect(0, RPG.input.pointer.y, ctx.canvas.width, 1);
+//		ctx.drawImage(RPG.gpx, x * 8, 0, 8, 8,
+//					  0, 0, 8, 8);
+	var offsX = 0;
+	if(ctx.canvas.classList.contains("scene")) {
+		offsX = 16;
+		// menus
+		ctx.fillStyle = "black";
+		ctx.fillRect(0, 0, 16, ctx.canvas.height);
+		ctx.fillRect(ctx.canvas.width - 16, 0, 16, ctx.canvas.height);
+		RPG.p.every(function(c, idx) {
+			draw(ctx, c, (idx * 8) % 16, Math.floor(idx / 2) * 8);
+			return true;
+		});
+		for(var i = 0; i < RPG.gpx.width / 8; ++i) {
+			// note 15 to scoot 'em over one pixel
+			ctx.drawImage(RPG.gpx, i * 8, 0, 8, 8,
+						  ctx.canvas.width - 15 + ((i * 8) % 16),
+						  Math.floor(i / 2) * 8, 8, 8);
+		}
+		setting(ctx, page.scene,
+				offsX, 0, ctx.canvas.width - 32, ctx.canvas.height);
+	} else {
+		setting(ctx, page.scene);
 	}
-	page.scene.characters.every(function(c) {
-		draw(ctx, c);
-		return true;
-	});
+
 	page.scene.stamps.every(function(s) {
-		ctx.drawImage(RPG.gpx, s.idx * 8, 0, 8, 8,
-					  s.x, s.y, 8, 8);
+		if(typeof s.idx === "number") {  // it's a stamp
+			ctx.drawImage(RPG.gpx, s.idx * 8, 0, 8, 8,
+						  s.x + offsX, s.y, 8, 8);
+		} else if(s.shape) {  // it's a pixon character
+			draw(ctx, s, s.x + offsX, s.y);
+		}
 		return true;
 	});
 }
@@ -282,7 +297,7 @@ function renderpages() {
 			div.classList.add("awesome");
 		}
 		canv = document.createElement("canvas");
-		canv.width = RPG.W;
+		canv.width = RPG.H;
 		canv.height = RPG.H;
 		jaggy(canv);
 		render(canv.getContext("2d"), page);
@@ -314,7 +329,6 @@ function renderpages() {
 }
 
 function tidy() {
-	RPG.p = {};
 	document.querySelector("#awesome").checked = false;
 
 	var ins = document.querySelectorAll("input");
@@ -329,49 +343,6 @@ function tidy() {
 		ins[i].value = "";
 	}
 	document.querySelector("#chanceodds").selectedIndex = 4;
-	document.querySelector("select.sceneupdate").selectedIndex = 0;
-	var hide = document.querySelectorAll("div.sceneupdate");
-	for(var i = 0; i < hide.length; ++i) {
-		hide[i].classList.toggle("hidden",
-								 !this.value ||
-								 (this.value &&
-								  !hide[i].classList.contains(this.value)));
-	}
-	document.querySelector("#firstchar").nextSibling.click();
-	document.querySelector("#addchar").nextSibling.click();
-
-	var sel = document.querySelectorAll("select.thing");
-	var optgroup;
-	var option;
-	var buildOption = function(c) {
-		option = document.createElement("option");
-		option.value = c.name;
-		option.appendChild(document.createTextNode(c.name));
-		if(c.canvas && c.canvas.toDataURL) {
-			option.style.backgroundImage = [
-				"url(", c.canvas.toDataURL(), ")"
-			].join("");
-		} else if(c.idx && document.querySelector("#stamp" + c.idx)) {
-			option.style.backgroundImage = [
-				"url(",
-				document.querySelector("#stamp" + c.idx).toDataURL(),
-				")"
-			].join("");
-		}
-		optgroup.appendChild(option);
-		return true;
-	};
-	for(var i = sel.length - 1; i >= 0; --i) {
-		empty(sel[i]);
-		optgroup = document.createElement("optgroup");
-		optgroup.label = "Characters";
-		RPG.story.scene.characters.every(buildOption);
-		sel[i].appendChild(optgroup);
-		optgroup = document.createElement("optgroup");
-		optgroup.label = "Symbols";
-		RPG.story.scene.stamps.every(buildOption);
-		sel[i].appendChild(optgroup);
-	}
 
 	var chunks = ["T", "H", "E", " E", "N", "D"];
 	var awe = document.querySelectorAll("#pages .page.awesome").length + 1;
@@ -394,20 +365,18 @@ function tidy() {
 	document.querySelector("#endcheck").disabled = !!split.length;
 
 	if(RPG.story.pages.length) {
-		document.querySelector("#init").classList.toggle("hidden", true);
 		if(RPG.story.pages[RPG.story.pages.length - 1].theend) {
-			document.querySelector("#scene").classList.toggle("hidden", true);
-			document.querySelector("#main").classList.toggle("hidden", true);
+			document.querySelector("#tools").classList.toggle("hidden", true);
+			document.querySelector("#write").classList.toggle("hidden", true);
 			document.querySelector("#done").classList.toggle("hidden", false);
 		} else {
-			document.querySelector("#scene").classList.toggle("hidden", false);
-			document.querySelector("#main").classList.toggle("hidden", RPG.wait);
+			document.querySelector("#tools").classList.toggle("hidden", RPG.wait);
+			document.querySelector("#write").classList.toggle("hidden", RPG.wait);
 			document.querySelector("#done").classList.toggle("hidden", true);
 		}
 	} else {
-		document.querySelector("#scene").classList.toggle("hidden", false);
-		document.querySelector("#init").classList.toggle("hidden", RPG.wait);
-		document.querySelector("#main").classList.toggle("hidden", true);
+		document.querySelector("#tools").classList.toggle("hidden", true);
+		document.querySelector("#write").classList.toggle("hidden", RPG.wait);
 		document.querySelector("#done").classList.toggle("hidden", true);
 	}
 	document.querySelector("#wait").classList.toggle("hidden", !RPG.wait);
@@ -438,40 +407,128 @@ function tidy() {
 	}
 }
 
-function mousemove(e) {
+function calcX(e) {
 	var x = e.clientX;
-	var y = e.clientY;
 	var elm = e.target
 	while(elm && elm.offsetTop !== undefined) {
 		x -= elm.offsetLeft;
-		y -= elm.offsetTop;
 		elm = elm.offsetParent;
 	}
 	x += document.scrollingElement.scrollLeft;
+	return Math.floor(x / RPG.canvas.clientWidth * RPG.W);
+};
+function calcY(e) {
+	var y = e.clientY;
+	var elm = e.target
+	while(elm && elm.offsetTop !== undefined) {
+		y -= elm.offsetTop;
+		elm = elm.offsetParent;
+	}
 	y += document.scrollingElement.scrollTop;
-	RPG.input.pointer.x = Math.floor(x / RPG.canvas.clientWidth * RPG.W);
-	RPG.input.pointer.y = Math.floor(y / RPG.canvas.clientHeight * RPG.H);
+	return Math.floor(y / RPG.canvas.clientHeight * RPG.H);
+};
+function mousemove(e) {
+	RPG.input.pointer.x = calcX(e);
+	RPG.input.pointer.y = calcY(e);
 	if(RPG.input.placeObj) {
-		RPG.input.placeObj.x = RPG.input.pointer.x - 4;
+		RPG.input.placeObj.x = RPG.input.pointer.x - 4 - 16;
 		RPG.input.placeObj.y = RPG.input.pointer.y - 4;
 	}
 	render();
 }
 function mouseout(e) {
-	RPG.scrollBack = -1;
-	RPG.sbHide = false;
-	mouseclick(e);
-}
-function mouseclick(e) {
-	RPG.input.place = false;
+	if(RPG.input.placeObj) {
+		RPG.story.scene.stamps = RPG.story.scene.stamps.filter(function(item) {
+			return (item !== RPG.input.placeObj);
+		});
+	}
 	RPG.input.placeObj = null;
-	document.querySelector("#scenehead").classList.toggle("collapse", RPG.sbHide);
-	RPG.sbHide = false;
-	if(RPG.scrollBack >= 0) {
-		document.scrollingElement.scrollTop = RPG.scrollBack;
-		RPG.scrollBack = -1;
+	render();
+}
+function mousedown(e) {
+	mousemove(e);
+	var which;
+	if(RPG.input.pointer.x < 16) {
+		which = (Math.floor(RPG.input.pointer.y / 8) * 2) + Math.floor(RPG.input.pointer.x / 8);
+		//console.log("grab char ", which);
+		RPG.input.placeObj = clone(RPG.p[which]);
+	} else if(RPG.input.pointer.x > RPG.W - 16) {
+		which = (Math.floor(RPG.input.pointer.y / 8) * 2) + Math.floor((RPG.input.pointer.x - (RPG.W - 16)) / 8);
+		//console.log("grab stamp", which);
+		RPG.input.placeObj = {
+			idx: which,
+			x: RPG.input.pointer.x,
+			y: RPG.input.pointer.y
+		};
+	}
+	if(RPG.input.placeObj) {
+		RPG.story.scene.stamps.push(RPG.input.placeObj);
+	} else {
+		RPG.story.scene.stamps.every(function(stamp) {
+			if(RPG.input.pointer.x - 16 >= stamp.x && RPG.input.pointer.x - 16 <= stamp.x + 8 &&
+			   RPG.input.pointer.y >= stamp.y && RPG.input.pointer.y <= stamp.y + 8) {
+				RPG.input.placeObj = stamp;
+			}
+			return !RPG.input.placeObj;
+		});
+	}
+	if(RPG.input.placeObj) {
+		mousemove(e);
 	}
 	render();
+}
+function mouseup(e) {
+	if(RPG.input.placeObj && (RPG.input.pointer.x < 16 ||
+							  RPG.input.pointer.x > RPG.W - 16)) {
+		mouseout(e);
+	}
+	RPG.input.placeObj = null;
+	render();
+}
+
+function init() {
+	RPG.canvas = document.querySelector("canvas.scene");
+	RPG.ctx = RPG.canvas.getContext("2d");
+	jaggy(RPG.ctx);
+	RPG.W = RPG.canvas.width;
+	RPG.H = RPG.canvas.height;
+	RPG.gpx = document.querySelector("img");
+	RPG.story.scene.seed = Math.floor(Math.random() * 32000);
+	document.querySelector("#tools").classList.toggle("hidden", true);
+	document.querySelector("#write").classList.toggle("hidden", false);
+	RPG.p = [];
+	while(RPG.p.length < 16) {
+		RPG.p.push(generate());
+	}
+
+	RPG.online = false;
+	RPG.wait = false;
+	RPG.player1 = {
+		name: "",
+		id: "",
+		local: false
+	};
+	RPG.player2 = {
+		name: "",
+		id: "",
+		local: false
+	};
+	RPG.story = {
+		title: "",
+		scene: {
+			seed: Math.floor(Math.random() * 32000) + 1,
+			color1: "#000000",
+			color2: "#888888",
+			stamps: []
+		},
+		pages:[]
+	};
+	RPG.partner = "local";
+	empty(document.querySelector("#online"));
+	render();
+	renderpages();
+	document.querySelector("#room").classList.toggle("hidden", false);
+	document.querySelector("#story").classList.toggle("hidden", true);
 }
 
 window.addEventListener("load", function() {
@@ -483,56 +540,7 @@ window.addEventListener("load", function() {
 		});
 	};
 
-	// init
-	RPG.canvas = document.querySelector("canvas.scene");
-	RPG.ctx = RPG.canvas.getContext("2d");
-	jaggy(RPG.ctx);
-	RPG.W = RPG.canvas.width;
-	RPG.H = RPG.canvas.height;
-	RPG.gpx = document.querySelector("img");
-	RPG.story.scene.seed = Math.floor(Math.random() * 32000);
-	document.querySelector("#init").classList.toggle("hidden", false);
-	document.querySelector("#main").classList.toggle("hidden", true);
-	render();
-	tidy();
-
-	// character builders
-	var p = document.querySelectorAll("canvas.char");
-	var roll;
-	var func = function(e) {
-		if(e) {
-			e.preventDefault();
-		}
-		this.width = this.height = 8;
-		var p = generate();
-		if(!RPG.p[this.id]) {
-			RPG.p[this.id] = p;
-		} else {
-			RPG.p[this.id].color = p.color;
-			RPG.p[this.id].shape = p.shape;
-			RPG.p[this.id].canvas = null;
-		}
-		render();
-		draw(this.getContext("2d"), RPG.p[this.id], 0, 0);
-	};
-	for(var i = 0; i < p.length; ++i) {
-		p[i].width = p[i].height = 8;
-		p[i].nextSibling.addEventListener("click", func.bind(p[i]));
-		//func.bind(p[i])();
-	}
-
-	// scene update sections
-	var sel = document.querySelector("select.sceneupdate");
-	sel.value = "";
-	sel.addEventListener("change", function() {
-		var hide = document.querySelectorAll("div.sceneupdate");
-		for(var i = 0; i < hide.length; ++i) {
-			hide[i].classList.toggle("hidden",
-									 !this.value ||
-									 (this.value &&
-									  !hide[i].classList.contains(this.value)));
-		}
-	});
+	init();
 
 	// color pickers
 	var col1 = document.querySelector("#bgcolor1");
@@ -550,7 +558,7 @@ window.addEventListener("load", function() {
 
 	// bg roll buttons
 	document.querySelector("#bgroll").addEventListener("click", function() {
-		RPG.story.scene.seed = Math.floor(Math.random() * 32000);
+		RPG.story.scene.seed = Math.floor(Math.random() * 32000) + 1;
 		render();
 	});
 	document.querySelector("#colroll").addEventListener("click", function() {
@@ -560,41 +568,6 @@ window.addEventListener("load", function() {
 		col2.value = RPG.story.scene.color2;
 		render();
 	});
-
-	// stamp selector
-	var span = document.querySelector("span.stamp");
-	var canv;
-	var ctx;
-	var inp;
-	var lbl;
-	var x = 0;
-	for(x = 0; x < RPG.gpx.width / 8; ++x) {
-		canv = document.createElement("canvas");
-		canv.id = "stamp" + x;
-		canv.width = canv.height = 8;
-		ctx = canv.getContext("2d");
-		jaggy(ctx);
-		ctx.drawImage(RPG.gpx, x * 8, 0, 8, 8,
-					  0, 0, 8, 8);
-		inp = document.createElement("input");
-		inp.type = "radio";
-		inp.name = "stamp";
-		inp.className = "stamp";
-		if(!x) {
-			inp.checked = true;
-			RPG.addstamp.idx = x;
-		}
-		inp.value = x;
-		inp.addEventListener("change", function() {
-			RPG.addstamp.idx = this.value;
-			render();
-		});
-		lbl = document.createElement("label");
-		lbl.appendChild(inp);
-		lbl.appendChild(canv);
-		span.appendChild(lbl);
-		span.appendChild(document.createTextNode(" "));
-	}
 
 	// chance roller
 	var chance = document.querySelector("#chanceroll");
@@ -615,69 +588,10 @@ window.addEventListener("load", function() {
 		result.appendChild(document.createTextNode(str));
 	});
 
-	// "place..." links
-	var a = document.querySelectorAll("a.place");
-	for(var i = a.length - 1; i >= 0; --i) {
-		a[i].addEventListener("click", function(e) {
-			e.preventDefault();
-			e.stopPropagation();
-			RPG.input.place = true;
-			var hash = this.href.substring(this.href.indexOf("#"));
-			if(RPG.p[hash.substring(1)]) {
-				// firstchar or addchar
-				RPG.input.placeObj = RPG.p[hash.substring(1)];
-				if(RPG.story.scene.characters.indexOf(RPG.input.placeObj) < 0) {
-					RPG.story.scene.characters.push(RPG.input.placeObj);
-				}
-			} else if(hash === "#addstamp") {
-				RPG.input.placeObj = RPG.addstamp;
-				if(RPG.story.scene.stamps.indexOf(RPG.input.placeObj) < 0) {
-					RPG.story.scene.stamps.push(RPG.input.placeObj);
-				}
-			} else if(hash === "#movething") {
-				var id = document.querySelector(hash).value;
-				RPG.story.scene.stamps.every(function(stamp) {
-					if(stamp.name === id) {
-						RPG.input.placeObj = stamp;
-					}
-					return true;
-				});
-				RPG.story.scene.characters.every(function(c) {
-					if(c.name === id) {
-						RPG.input.placeObj = c;
-					}
-					return true;
-				});
-			}
-			var scenehead = document.querySelector("#scenehead");
-			RPG.sbHide = scenehead.classList.contains("collapse");
-			scenehead.classList.toggle("collapse", false);
-			RPG.scrollBack = document.scrollingElement.scrollTop;
-			//document.scrollingElement.scrollTop = 0;
-			scenehead.scrollIntoView();
-		}, {capture: true});
-	}
 	RPG.canvas.addEventListener("mousemove", mousemove);
 	RPG.canvas.addEventListener("mouseout", mouseout);
-	RPG.canvas.addEventListener("click", mouseclick);
-
-	// remove button
-	document.querySelector("#remove").addEventListener("click", function() {
-		var id = document.querySelector("#removething").value;
-		RPG.story.scene.stamps = RPG.story.scene.stamps.filter(function(s) {
-			return (s.name !== id);
-		});
-		RPG.story.scene.characters = RPG.story.scene.characters.filter(function(c) {
-			return (c.name !== id);
-		});
-		var opt = document.querySelectorAll("select.thing option");
-		for(var i = opt.length - 1; i >= 0; --i) {
-			if(opt[i].value === id) {
-				opt[i].parentNode.removeChild(opt[i]);
-			}
-		}
-		render();
-	});
+	RPG.canvas.addEventListener("mousedown", mousedown);
+	RPG.canvas.addEventListener("mouseup", mouseup);
 
 	// revert button
 	document.querySelector("#revert").addEventListener("click", function() {
@@ -685,63 +599,27 @@ window.addEventListener("load", function() {
 			return;
 		}
 		var last = RPG.story.pages[RPG.story.pages.length - 1];
-		RPG.story.scene.characters = JSON.parse(JSON.stringify(last.scene.characters,
-															   serialize));
-		RPG.story.scene.stamps = JSON.parse(JSON.stringify(last.scene.stamps,
-														   serialize));
+		RPG.story.scene = clone(pages[pages.length - 1].scene);
+		document.querySelector("#bgcolor1").value = RPG.story.scene.color1;
+		document.querySelector("#bgcolor2").value = RPG.story.scene.color2;
+		RPG.story.title = pages[pages.length - 1].title;
+		document.querySelector("#title").value = RPG.story.title;
+		//RPG.story.scene.stamps = clone(last.scene.stamps);
 		tidy();
 	});
 
-	// initial page post
+	// page post
 	document.querySelector("#title").addEventListener("change", function() {
 		RPG.story.title = this.value;
-	});
-	document.querySelector("#firstcharname").addEventListener("change", function() {
-		RPG.p.firstchar.name = uniquename(this.value);
-	});
-	document.querySelector("#placeinput").addEventListener("change", function() {
-		var label = document.querySelector("#placename");
-		empty(label);
-		label.appendChild(document.createTextNode(this.value));
-	});
-	document.querySelector("#initpost").addEventListener("click", function() {
-		var page = {
-			title: RPG.story.title,
-			scene: JSON.parse(JSON.stringify(RPG.story.scene, serialize)),
-			//characters: [].concat(RPG.story.scene.characters),
-			//stamps: [].concat(RPG.story.scene.stamps),
-			plot: document.querySelector("#initplot").value
-		};
-
-		document.querySelector("#init").classList.toggle("hidden", true);
-		document.querySelector("#main").classList.toggle("hidden", false);
-
-		RPG.story.pages.push(page);
-		if(RPG.online && RPG.socket) {
-			RPG.wait = true;
-			RPG.socket.emit("pages", {
-				id: RPG.partner,
-				pages: JSON.parse(JSON.stringify(RPG.story.pages,
-												 serialize))
-			});
-		}
 		renderpages();
-	});
-	// additional page post
-	document.querySelector("#addcharname").addEventListener("change", function() {
-		RPG.p.addchar.name = uniquename(this.value);
-	});
-	document.querySelector("#stampname").addEventListener("change", function() {
-		RPG.addstamp.name = uniquename(this.value);
 	});
 	document.querySelector("#post").addEventListener("click", function() {
 		if(document.querySelector("#awesome").checked) {
 			RPG.story.pages[RPG.story.pages.length - 1].awesome = true;
 		}
 		var page = {
-			scene: JSON.parse(JSON.stringify(RPG.story.scene, serialize)),
-			//characters: JSON.parse(JSON.stringify(RPG.story.scene.characters, serialize)),
-			//stamps: JSON.parse(JSON.stringify(RPG.story.scene.stamps, serialize)),
+			title: RPG.story.title,
+			scene: clone(RPG.story.scene),
 			plot: document.querySelector("#plot").value,
 			theend: document.querySelector("#endcheck").checked
 		};
@@ -750,8 +628,7 @@ window.addEventListener("load", function() {
 			RPG.wait = true;
 			RPG.socket.emit("pages", {
 				id: RPG.partner,
-				pages: JSON.parse(JSON.stringify(RPG.story.pages,
-												 serialize))
+				pages: clone(RPG.story.pages)
 			});
 		}
 		renderpages();
@@ -762,6 +639,7 @@ window.addEventListener("load", function() {
 		if(!RPG.socket || RPG.partner === "local") {
 			document.querySelector("#room").classList.toggle("hidden", true);
 			document.querySelector("#story").classList.toggle("hidden", false);
+			renderpages();
 			tidy();
 		} else {
 			RPG.socket.emit("invite", RPG.partner);
@@ -769,6 +647,9 @@ window.addEventListener("load", function() {
 			RPG.player1.id = RPG.socket.id;
 			document.querySelector("#room").classList.toggle("hidden", true);
 			document.querySelector("#story").classList.toggle("hidden", true);
+			empty(partner);
+			var user = RPG.lobby[RPG.partner] || {name: "Anonymous"};
+			partner.appendChild(document.createTextNode(user.name));
 			RPG.wait = true;
 			tidy();
 		}
@@ -777,36 +658,7 @@ window.addEventListener("load", function() {
 	document.querySelector("#restart").addEventListener("click", function(e) {
 		e.preventDefault();
 		e.stopPropagation();
-		var label = document.querySelector("#placename");
-		empty(label);
-		RPG.online = false;
-		RPG.wait = false;
-		RPG.player1 = {
-			name: "",
-			id: "",
-			local: false
-		};
-		RPG.player2 = {
-			name: "",
-			id: "",
-			local: false
-		};
-		RPG.story = {
-			title: "",
-			scene: {
-				seed: 1,
-				color1: "#000000",
-				color2: "#888888",
-				characters: [],
-				stamps: []
-			},
-			pages:[]
-		};
-		RPG.partner = "local";
-		empty(document.querySelector("#online"));
-		renderpages();
-		document.querySelector("#room").classList.toggle("hidden", false);
-		document.querySelector("#story").classList.toggle("hidden", true);
+		init();
 		//window.location = window.location;
 	});
 
@@ -891,6 +743,7 @@ window.addEventListener("load", function() {
 				document.querySelector("#room").classList.toggle("hidden", true);
 				document.querySelector("#story").classList.toggle("hidden", true);
 				document.querySelector("#wait").classList.toggle("hidden", false);
+				renderpages();
 			} else {
 				RPG.socket.emit("reject", id);
 			}
@@ -931,12 +784,17 @@ window.addEventListener("load", function() {
 			//console.log("new pages", pages);
 			RPG.wait = !RPG.wait;
 			RPG.story.pages = pages;
-			RPG.story.scene = JSON.parse(JSON.stringify(pages[pages.length - 1].scene));
-			if(pages[pages.length - 1].title) {
+			if(pages.length) {
+				RPG.story.scene = clone(pages[pages.length - 1].scene);
+				document.querySelector("#bgcolor1").value = RPG.story.scene.color1;
+				document.querySelector("#bgcolor2").value = RPG.story.scene.color2;
 				RPG.story.title = pages[pages.length - 1].title;
+				document.querySelector("#title").value = RPG.story.title;
+				document.querySelector("#story").classList.toggle("hidden", false);
 			}
-			document.querySelector("#story").classList.toggle("hidden", false);
+			render();
 			renderpages();
+			document.querySelector("#title").value = RPG.story.title;
 		});
 	} catch(e) {
 		var status = document.querySelector("#status");

@@ -63,7 +63,7 @@
 	  }
 	  #pages canvas {
 	  margin-top: 0.5em;
-	  width: 33%;
+	  width: 20%;
 	  }
 	  #pages div {
 	  clear: both;
@@ -100,7 +100,7 @@
 	  display: none;
 	  }
 	  canvas.scene {
-	  width: 95vw;
+	  width: 50%;
 	  }
 	  canvas {
 	  image-rendering: pixelated;
@@ -175,130 +175,71 @@
 
 	<div id="story" class="hidden">
 
-	  <div id="scene">
-	  <h1 id="scenehead">Scene</h1>
-	  <div class="expand">
-		<canvas class="scene" width=128 height=64></canvas>
-		<span id="placename"></span>
-		<a href="#" onclick="alert('This display is like the graphpaper map for D&D or the diner table used to plan a heist.  It is a quick and dirty illustration you can update.'); return false;">[?]</a>
-	  </div>
-	  </div>
-
-	  <div id="init">
-	  <h1>Begin</h1>
- 	  <div class="expand">
-		Title:
-		<blockquote>
-		  <input id="title" placeholder="Story Title">
-		  <a href="#" onclick="alert('Pick something very abstract or random if you cannot think of a good title.  It may inspire story events, or be artfully detached!'); return false;">[?]</a>
-		</blockquote>
-		First character:
-		<blockquote>
-		  <canvas id="firstchar" class="char"></canvas><button>Roll</button>
-		  <input id="firstcharname" placeholder="Name">
-		  <a href="#" onclick="alert('Consider using a title or nickname, like King Shmoe or Clever Jake.  One extra word can inject a lot of character!'); return false;">[?]</a>
-		  <br>
-		  Position: <a href="#firstchar" class="place">Place...</a>
-		</blockquote>
-		Setting:
-		<blockquote>
-		  <input id="placeinput" placeholder="Placename">
-		  <a href="#" onclick="alert('Is that a continent?  A space colony?  A kitchen?  Is it a happy place?  Is it far from home?'); return false;">[?]</a>
-		  <br>
-		  Backdrop:
-		  <button id="bgroll">Roll</button>
-		  Colors:
-		  <input type="color" id="bgcolor1">
-		  <input type="color" id="bgcolor2">
-		  <button id="colroll">Roll</button>
-		</blockquote>
-		Plot:
-		<blockquote>
-		  <textarea id="initplot"></textarea>
-		</blockquote>
-		<button id="initpost">Post</button>
-	  </div>
-	  </div>
-
 	  <h1>Story</h1>
 	  <div class="expand">
 		<div id="pages"></div>
 	  </div>
 
-	  <div id="main" class="hidden">
-	  <h1>Continue</h1>
- 	  <div class="expand">
-		<p>
-		  <h2>Resolve Previous Page</h2>
-		  <div class="expand">
-			<label class="awesome">
-			  <input id="awesome" type="checkbox"> Awesome!
-			</label>
-			<a href="#" onclick="alert('If the last page is awesome, mark it as such!'); return false;">[?]</a>
-			<br>
-			Success odds:
-			<select id="chanceodds">
-			  <option value="1">1</option>
-			  <option value="2">2</option>
-			  <option value="3">3</option>
-			  <option value="4">4</option>
-			  <option value="5">5</option>
-			  <option value="6">6</option>
-			  <option value="7">7</option>
-			  <option value="8">8</option>
-			  <option value="9">9</option>
-			</select>
-			of 10
-			<button id="chanceroll">Roll</button>
-			<a href="#" onclick="alert('Does some event depend on fate?  Use this anytime you need a coin flip or a die roll.'); return false;">[?]</a>
-			<span id="chanceresult"></span>
-		  </div>
-		  <h2>New Page</h2>
-		  <div class="expand">
-			Scene update:
-			<select class="sceneupdate">
-			  <option value="">None</option>
-			  <option value="char">Add a character</option>
-			  <option value="stamp">Add a symbol</option>
-			  <option value="move">Move things</option>
-			  <option value="remove">Remove things</option>
-			</select>
-			<blockquote>
-			  <div class="sceneupdate char hidden">
-				<canvas id="addchar" class="char"></canvas><button>Roll</button>
-				<input id="addcharname" placeholder="Name">
-				<br>
-				Position: <a href="#addchar" class="place">Place...</a>
-			  </div>
-			  <div class="sceneupdate stamp hidden">
-				<span class="stamp"></span>
-				<input id="stampname" placeholder="identifier...">
-				<br>
-				Position: <a href="#addstamp" class="place">Place...</a>
-			  </div>
-			  <div class="sceneupdate move hidden">
-				<select class="thing" id="movething"></select>
-				Position: <a href="#movething" class="place">Place...</a>
-			  </div>
-			  <div class="sceneupdate remove hidden">
-				<select id="removething" class="thing"></select>
-				<button id="remove">Remove</button>
-			  </div>
-			</blockquote>
-			Plot:
-			<blockquote>
-			  <textarea id="plot"></textarea>
-			  <label>
-				<input id="endcheck" type="checkbox" disabled>
-				<span id="theend"><span class="prog">T</span><span class="ress">HE END</span></span>
-			  </label>
-			  <a href="#" onclick="alert('You can end the story anytime once enough awesome pages happen.'); return false;">[?]</a>
-			</blockquote>
-			<button id="revert">Revert</button><br>
-			<button id="post">Post</button>
-		  </div>
-		</p>
+  	  <div id="tools">
+		<h1>Resolve Previous Page</h1>
+		<div class="expand">
+		  <label class="awesome">
+			<input id="awesome" type="checkbox"> Awesome!
+		  </label>
+		  <a href="#" onclick="alert('If the last page is awesome, mark it as such!'); return false;">[?]</a>
+		  <br>
+		  Success odds:
+		  <select id="chanceodds">
+			<option value="1">1</option>
+			<option value="2">2</option>
+			<option value="3">3</option>
+			<option value="4">4</option>
+			<option value="5">5</option>
+			<option value="6">6</option>
+			<option value="7">7</option>
+			<option value="8">8</option>
+			<option value="9">9</option>
+		  </select>
+		  of 10
+		  <button id="chanceroll">Roll</button>
+		  <a href="#" onclick="alert('Does some event depend on fate?  Use this anytime you need a coin flip or a die roll.'); return false;">[?]</a>
+		  <span id="chanceresult"></span>
+		</div>
 	  </div>
+
+  	  <div id="write">
+		<h1>Write</h1>
+ 		<div class="expand">
+		  Title:
+		  <blockquote>
+			<input id="title" placeholder="Story Title">
+			<a href="#" onclick="alert('Pick something very abstract or random if you cannot think of a good title.  It may inspire story events, or be artfully detached!  You can always change it later, too.'); return false;">[?]</a>
+		  </blockquote>
+		  Scene:
+		  <blockquote>
+			<canvas class="scene" width=96 height=64></canvas>
+			<a href="#" onclick="alert('Drag characters and symbols anywhere you like!  This display is like the graphpaper map for D&D or the diner table used to plan a heist -- a quick and dirty illustration you can update.'); return false;">[?]</a>
+			<br>
+			Backdrop:
+			<button id="bgroll">Roll</button>
+			Colors:
+			<input type="color" id="bgcolor1">
+			<input type="color" id="bgcolor2">
+			<button id="colroll">Roll</button>
+		  </blockquote>
+		  Plot:
+		  <blockquote>
+			<textarea id="plot"></textarea>
+		  </blockquote>
+		  <label>
+			<input id="endcheck" type="checkbox" disabled>
+			<span id="theend"><span class="prog">T</span><span class="ress">HE END</span></span>
+		  </label>
+		  <br>
+		  <button id="revert">Revert</button>
+		  <br>
+		  <button id="post">Post</button>
+		</div>
 	  </div>
 	</div>
 
