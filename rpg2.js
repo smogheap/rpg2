@@ -319,7 +319,8 @@ function tidy() {
 
 	var ins = document.querySelectorAll("input");
 	for(var i = ins.length - 1; i >= 0; --i) {
-		if(["radio", "color"].indexOf(ins[i].type) < 0) {
+		if(["radio", "color"].indexOf(ins[i].type) < 0 &&
+		   ["localplayer", "localplayer2"].indexOf(ins[i].id < 0)) {
 			ins[i].value = "";
 		}
 	}
@@ -684,9 +685,9 @@ window.addEventListener("load", function() {
 			return;
 		}
 		var last = RPG.story.pages[RPG.story.pages.length - 1];
-		RPG.story.scene.characters = JSON.parse(JSON.stringify(last.characters,
+		RPG.story.scene.characters = JSON.parse(JSON.stringify(last.scene.characters,
 															   serialize));
-		RPG.story.scene.stamps = JSON.parse(JSON.stringify(last.stamps,
+		RPG.story.scene.stamps = JSON.parse(JSON.stringify(last.scene.stamps,
 														   serialize));
 		tidy();
 	});
@@ -705,6 +706,7 @@ window.addEventListener("load", function() {
 	});
 	document.querySelector("#initpost").addEventListener("click", function() {
 		var page = {
+			title: RPG.story.title,
 			scene: JSON.parse(JSON.stringify(RPG.story.scene, serialize)),
 			//characters: [].concat(RPG.story.scene.characters),
 			//stamps: [].concat(RPG.story.scene.stamps),
@@ -854,6 +856,7 @@ window.addEventListener("load", function() {
 					RPG.partner = this.value;
 				});
 				label.appendChild(radio);
+				label.appendChild(document.createTextNode(" "));
 				label.appendChild(document.createTextNode(RPG.lobby[id].name ||
 														  "Anonymous"));
 				list.appendChild(label);
@@ -863,11 +866,14 @@ window.addEventListener("load", function() {
 
 		// other player asked us to join
 		RPG.socket.on("invite", function(id) {
-			console.log("invite from", id);
+			//console.log("invite from", id);
 			var user = RPG.lobby[id] || {name: "Anonymous"};
 			if(confirm("Would you like to join a game with '" + user.name + "'?")) {
 				RPG.socket.emit("accept", id);
 				RPG.partner = id;
+				var partner = document.querySelector("#partner");
+				empty(partner);
+				partner.appendChild(document.createTextNode(user.name));
 				RPG.player1.name = user.name;
 				RPG.player1.id = id;
 				RPG.player2.name = document.querySelector("#localplayer").value;
@@ -884,9 +890,12 @@ window.addEventListener("load", function() {
 
 		// other player accepted our invitation
 		RPG.socket.on("accept", function(id) {
-			console.log("accept from", id);
+			//console.log("accept from", id);
 			RPG.online = true;
 			RPG.wait = false;
+			var partner = document.querySelector("#partner");
+			empty(partner);
+			partner.appendChild(document.createTextNode(RPG.lobby[id].name));
 			RPG.player2.name = RPG.lobby[id].name;
 			RPG.player2.id = id;
 			document.querySelector("#room").classList.toggle("hidden", true);
@@ -896,7 +905,7 @@ window.addEventListener("load", function() {
 
 		// other player rejected our invitation
 		RPG.socket.on("reject", function(id) {
-			console.log("reject from", id);
+			//console.log("reject from", id);
 			RPG.online = false;
 			RPG.wait = false;
 			if(id !== RPG.partner) {
@@ -911,10 +920,13 @@ window.addEventListener("load", function() {
 
 		// update pages
 		RPG.socket.on("pages", function(pages) {
-			console.log("new pages", pages);
+			//console.log("new pages", pages);
 			RPG.wait = !RPG.wait;
 			RPG.story.pages = pages;
 			RPG.story.scene = JSON.parse(JSON.stringify(pages[pages.length - 1].scene));
+			if(pages[pages.length - 1].title) {
+				RPG.story.title = pages[pages.length - 1].title;
+			}
 			document.querySelector("#story").classList.toggle("hidden", false);
 			renderpages();
 		});

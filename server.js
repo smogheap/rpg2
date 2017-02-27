@@ -18,11 +18,9 @@ io.on("connection", function(socket) {
 	console.log("someone's here");
 	io.emit("users", RPG.users);
 
-	//socket.broadcast.emit("to everyone else");
-	//io.sockets.connected[id].emit("invite", socket.id);  <-works
-	//socket.broadcast.to(id).emit("to one person");
 	//io.emit("to everyone");
-	//socket.join("uniq"), io.to("uniq").emit("to uniq room")
+	//socket.broadcast.emit("to everyone else");
+	//io.sockets.connected[id].emit("to one client", socket.id);
 
 	socket.on("signin", function(name) {
 		console.log("sign in", socket.id);
@@ -33,11 +31,11 @@ io.on("connection", function(socket) {
 		io.emit("users", RPG.users);
 	});
 	socket.on("invite", function(id) {
-		console.log("invite", id);
+		//console.log("invite", id);
 		io.sockets.connected[id].emit("invite", socket.id);
 	});
 	socket.on("accept", function(id) {
-		console.log("accept", id);
+		//console.log("accept", id);
 		if(RPG.users[id]) {
 			delete RPG.users[id];
 		}
@@ -45,19 +43,18 @@ io.on("connection", function(socket) {
 			delete RPG.users[socket.id];
 		}
 		io.sockets.connected[id].emit("accept", socket.id);
+		io.emit("users", RPG.users);
 	});
 	socket.on("reject", function(id) {
-		console.log("reject", id);
+		//console.log("reject", id);
 		io.sockets.connected[id].emit("reject", socket.id);
 	});
 
 	socket.on("pages", function(data) {
 		data = data || {};
-		console.log("pages from", data.id);
+		//console.log("pages from", data.id);
 		if(data.id && io.sockets.connected[data.id]) {
 			io.sockets.connected[data.id].emit("pages", data.pages);
-		} else {
-			console.log("nowhere to go", data);
 		}
 	});
 
