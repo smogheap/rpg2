@@ -1,7 +1,8 @@
 rpg2
 ====
+RPG2: the Reciprocative Penning Game for 2 players
 
-Reciprocative Penning Game for 2 players
+Take turns with a friend telling any kind of story you can imagine.
 
 
 dependencies
@@ -15,5 +16,11 @@ you may also need to:
 to run
 ------
 $ node server.js
+then play at http://yourserver:1139
 
-then you and a friend can duel in doodles at http://yourserver:1139
+
+TODO
+----
+- streamline scene editing
+- optional timer and "your turn" chime
+- host and link to a running instance

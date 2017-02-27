@@ -802,6 +802,8 @@ window.addEventListener("load", function() {
 			},
 			pages:[]
 		};
+		RPG.partner = "local";
+		empty(document.querySelector("#online"));
 		renderpages();
 		document.querySelector("#room").classList.toggle("hidden", false);
 		document.querySelector("#story").classList.toggle("hidden", true);
@@ -823,6 +825,12 @@ window.addEventListener("load", function() {
 			return;
 		}
 		RPG.socket.emit("signin", document.querySelector("#localplayer").value);
+		var text = document.createTextNode([
+			"Signed in as: ",
+			document.querySelector("#localplayer").value
+		].join(""));
+		empty(document.querySelector("#online"));
+		document.querySelector("#online").appendChild(text);
 	});
 	document.querySelector("#localplayer2").addEventListener("change", function() {
 		RPG.player2.name = this.value;
