@@ -839,5 +839,6 @@ window.addEventListener("load", function() {
 		var status = document.querySelector("#status");
 		empty(status);
 		status.appendChild(document.createTextNode("Online play is unavailable."));
+		document.querySelector("#signin").classList.add("hidden");
 	}
 });

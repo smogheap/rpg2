@@ -1,9 +1,10 @@
 {
-  "name": "RPG2",
-  "version": "0.0.1",
-  "description": "Reciprocative Penning Game for 2 players",
-  "dependencies": {
-    "express": "^4.14.1",
-    "socket.io": "^1.7.3"
-  }
+	"name": "RPG2",
+	"version": "0.0.1",
+	"description": "Reciprocative Penning Game for 2 players",
+	"dependencies": {
+		"express": "^4.14.1",
+		"socket.io": "^1.7.3"
+	},
+	"main": "electron.js"
 }

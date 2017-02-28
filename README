@@ -1,4 +1,4 @@
-rpg2
+RPG2
 ====
 RPG2: the Reciprocative Penning Game for 2 players
 
@@ -7,8 +7,10 @@ Take turns with a friend telling any kind of story you can imagine.
 
 play online
 -----------
-local multiplayer only:
-  https://smogheap.github.io/rpg2/
+live:
+  http://rpg2.penduin.net/
+static mirror, local multiplayer only:
+  http://smogheap.github.io/rpg2/
 
 
 dependencies
@@ -19,12 +21,7 @@ you may also need to:
   npm install --save express
 
 
-to run
-------
+to run your own server
+----------------------
 $ node server.js
 then play at http://yourserver:1139
-
-
-TODO
-----
-- host and link to a running instance
