@@ -23,7 +23,7 @@ io.on("connection", function(socket) {
 	//io.sockets.connected[id].emit("to one client", socket.id);
 
 	socket.on("signin", function(name) {
-		console.log("sign in", socket.id);
+		//console.log("sign in", socket.id);
 		//console.log(name, socket);
 		RPG.users[socket.id] = {
 			name: name || "Anonymous"
@@ -32,7 +32,9 @@ io.on("connection", function(socket) {
 	});
 	socket.on("invite", function(id) {
 		//console.log("invite", id);
-		io.sockets.connected[id].emit("invite", socket.id);
+		if(io.sockets.connected[id]) {
+			io.sockets.connected[id].emit("invite", socket.id);
+		}
 	});
 	socket.on("accept", function(id) {
 		//console.log("accept", id);
@@ -42,12 +44,16 @@ io.on("connection", function(socket) {
 		if(RPG.users[socket.id]) {
 			delete RPG.users[socket.id];
 		}
-		io.sockets.connected[id].emit("accept", socket.id);
+		if(io.sockets.connected[id]) {
+			io.sockets.connected[id].emit("accept", socket.id);
+		}
 		io.emit("users", RPG.users);
 	});
 	socket.on("reject", function(id) {
 		//console.log("reject", id);
-		io.sockets.connected[id].emit("reject", socket.id);
+		if(io.sockets.connected[id]) {
+			io.sockets.connected[id].emit("reject", socket.id);
+		}
 	});
 
 	socket.on("pages", function(data) {

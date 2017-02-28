@@ -2,6 +2,7 @@ RPG = {
 	canvas: null,
 	ctx: null,
 	gpx: null,
+	sfx: null,
 	player1: {
 		name: "",
 		id: "",
@@ -274,12 +275,13 @@ function render(ctx, page) {
 	});
 }
 
-function renderpages() {
+function renderpages(skiptidy) {
 	var cont = document.querySelector("#pages");
 	empty(cont);
 	var span = document.createElement("span");
 	var h3 = document.createElement("h3");
-	h3.appendChild(document.createTextNode(RPG.story.title || "Untitled Story"));
+	var title = RPG.story.title || "Untitled Story";
+	h3.appendChild(document.createTextNode(title));
 	span.className = "byline";
 	span.appendChild(document.createTextNode([
 		"by ", (RPG.player1.name || "Anonymous"),
@@ -325,7 +327,9 @@ function renderpages() {
 		h3.appendChild(document.createTextNode("THE END"));
 		cont.appendChild(h3);
 	}
-	tidy();
+	if(!skiptidy) {
+		tidy();
+	}
 }
 
 function tidy() {
@@ -338,6 +342,7 @@ function tidy() {
 			ins[i].value = "";
 		}
 	}
+	document.querySelector("#title").value = RPG.story.title;
 	ins = document.querySelectorAll("textarea");
 	for(var i = ins.length - 1; i >= 0; --i) {
 		ins[i].value = "";
@@ -428,6 +433,12 @@ function calcY(e) {
 	return Math.floor(y / RPG.canvas.clientHeight * RPG.H);
 };
 function mousemove(e) {
+	if(e.preventDefault) e.preventDefault();
+	if(e.stopPropagation) e.stopPropagation();
+	var touches = e.changedTouches;
+	if(e.changedTouches && e.changedTouches.length) {
+		e = e.changedTouches[0];
+	}
 	RPG.input.pointer.x = calcX(e);
 	RPG.input.pointer.y = calcY(e);
 	if(RPG.input.placeObj) {
@@ -435,8 +446,13 @@ function mousemove(e) {
 		RPG.input.placeObj.y = RPG.input.pointer.y - 4;
 	}
 	render();
+	return false;
 }
 function mouseout(e) {
+	var touches = e.changedTouches;
+	if(e.changedTouches && e.changedTouches.length) {
+		e = e.changedTouches[0];
+	}
 	if(RPG.input.placeObj) {
 		RPG.story.scene.stamps = RPG.story.scene.stamps.filter(function(item) {
 			return (item !== RPG.input.placeObj);
@@ -446,15 +462,17 @@ function mouseout(e) {
 	render();
 }
 function mousedown(e) {
+	var touches = e.changedTouches;
+	if(e.changedTouches && e.changedTouches.length) {
+		e = e.changedTouches[0];
+	}
 	mousemove(e);
 	var which;
 	if(RPG.input.pointer.x < 16) {
 		which = (Math.floor(RPG.input.pointer.y / 8) * 2) + Math.floor(RPG.input.pointer.x / 8);
-		//console.log("grab char ", which);
 		RPG.input.placeObj = clone(RPG.p[which]);
 	} else if(RPG.input.pointer.x > RPG.W - 16) {
 		which = (Math.floor(RPG.input.pointer.y / 8) * 2) + Math.floor((RPG.input.pointer.x - (RPG.W - 16)) / 8);
-		//console.log("grab stamp", which);
 		RPG.input.placeObj = {
 			idx: which,
 			x: RPG.input.pointer.x,
@@ -478,6 +496,10 @@ function mousedown(e) {
 	render();
 }
 function mouseup(e) {
+	var touches = e.changedTouches;
+	if(e.changedTouches && e.changedTouches.length) {
+		e = e.changedTouches[0];
+	}
 	if(RPG.input.placeObj && (RPG.input.pointer.x < 16 ||
 							  RPG.input.pointer.x > RPG.W - 16)) {
 		mouseout(e);
@@ -493,6 +515,7 @@ function init() {
 	RPG.W = RPG.canvas.width;
 	RPG.H = RPG.canvas.height;
 	RPG.gpx = document.querySelector("img");
+	RPG.sfx = document.querySelector("audio");
 	RPG.story.scene.seed = Math.floor(Math.random() * 32000);
 	document.querySelector("#tools").classList.toggle("hidden", true);
 	document.querySelector("#write").classList.toggle("hidden", false);
@@ -588,30 +611,47 @@ window.addEventListener("load", function() {
 		result.appendChild(document.createTextNode(str));
 	});
 
+	RPG.canvas.addEventListener("selectstart", function(e) {
+		e.preventDefault();
+		e.stopPropagation();
+		return false;
+	});
 	RPG.canvas.addEventListener("mousemove", mousemove);
 	RPG.canvas.addEventListener("mouseout", mouseout);
 	RPG.canvas.addEventListener("mousedown", mousedown);
 	RPG.canvas.addEventListener("mouseup", mouseup);
+
+	RPG.canvas.addEventListener("touchstart", mousedown);
+	RPG.canvas.addEventListener("touchmove", mousemove);
+	RPG.canvas.addEventListener("touchend", mouseup);
+	RPG.canvas.addEventListener("touchcancel", mouseout);
+	RPG.canvas.addEventListener("touchleave", mouseout);
+
+	// alarm test
+	document.querySelector("#chime").addEventListener("click", function() {
+		RPG.sfx.play();
+	});
 
 	// revert button
 	document.querySelector("#revert").addEventListener("click", function() {
 		if(!confirm("Revert all changes and start over on this page?")) {
 			return;
 		}
-		var last = RPG.story.pages[RPG.story.pages.length - 1];
-		RPG.story.scene = clone(pages[pages.length - 1].scene);
-		document.querySelector("#bgcolor1").value = RPG.story.scene.color1;
-		document.querySelector("#bgcolor2").value = RPG.story.scene.color2;
-		RPG.story.title = pages[pages.length - 1].title;
-		document.querySelector("#title").value = RPG.story.title;
-		//RPG.story.scene.stamps = clone(last.scene.stamps);
-		tidy();
+		if(RPG.story.pages.length) {
+			RPG.story.scene = clone(RPG.story.pages[RPG.story.pages.length - 1].scene);
+			RPG.story.title = RPG.story.pages[RPG.story.pages.length - 1].title || "";
+			document.querySelector("#bgcolor1").value = RPG.story.scene.color1;
+			document.querySelector("#bgcolor2").value = RPG.story.scene.color2;
+			document.querySelector("#story").classList.toggle("hidden", false);
+		}
+		render();
+		renderpages();
 	});
 
 	// page post
 	document.querySelector("#title").addEventListener("change", function() {
 		RPG.story.title = this.value;
-		renderpages();
+		renderpages(true);
 	});
 	document.querySelector("#post").addEventListener("click", function() {
 		if(document.querySelector("#awesome").checked) {
@@ -726,7 +766,6 @@ window.addEventListener("load", function() {
 
 		// other player asked us to join
 		RPG.socket.on("invite", function(id) {
-			//console.log("invite from", id);
 			var user = RPG.lobby[id] || {name: "Anonymous"};
 			if(confirm("Would you like to join a game with '" + user.name + "'?")) {
 				RPG.socket.emit("accept", id);
@@ -751,7 +790,6 @@ window.addEventListener("load", function() {
 
 		// other player accepted our invitation
 		RPG.socket.on("accept", function(id) {
-			//console.log("accept from", id);
 			RPG.online = true;
 			RPG.wait = false;
 			var partner = document.querySelector("#partner");
@@ -766,7 +804,6 @@ window.addEventListener("load", function() {
 
 		// other player rejected our invitation
 		RPG.socket.on("reject", function(id) {
-			//console.log("reject from", id);
 			RPG.online = false;
 			RPG.wait = false;
 			if(id !== RPG.partner) {
@@ -781,20 +818,22 @@ window.addEventListener("load", function() {
 
 		// update pages
 		RPG.socket.on("pages", function(pages) {
-			//console.log("new pages", pages);
 			RPG.wait = !RPG.wait;
 			RPG.story.pages = pages;
 			if(pages.length) {
 				RPG.story.scene = clone(pages[pages.length - 1].scene);
 				document.querySelector("#bgcolor1").value = RPG.story.scene.color1;
 				document.querySelector("#bgcolor2").value = RPG.story.scene.color2;
-				RPG.story.title = pages[pages.length - 1].title;
 				document.querySelector("#title").value = RPG.story.title;
 				document.querySelector("#story").classList.toggle("hidden", false);
 			}
 			render();
 			renderpages();
+			RPG.story.title = pages[pages.length - 1].title;
 			document.querySelector("#title").value = RPG.story.title;
+			if(document.querySelector("#alarm").checked) {
+				RPG.sfx.play();
+			}
 		});
 	} catch(e) {
 		var status = document.querySelector("#status");
