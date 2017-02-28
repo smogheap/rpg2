@@ -5,6 +5,12 @@ RPG2: the Reciprocative Penning Game for 2 players
 Take turns with a friend telling any kind of story you can imagine.
 
 
+play online
+-----------
+local multiplayer only:
+  https://smogheap.github.io/rpg2/
+
+
 dependencies
 ------------
   node.js
