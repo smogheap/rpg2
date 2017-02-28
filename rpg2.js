@@ -552,6 +552,26 @@ function init() {
 	renderpages();
 	document.querySelector("#room").classList.toggle("hidden", false);
 	document.querySelector("#story").classList.toggle("hidden", true);
+
+	// preload story
+	if(window.location.hash) {
+		var r = new XMLHttpRequest();
+		r.open("GET", "stories/" + window.location.hash.substring(1), true);
+		r.onreadystatechange = function() {
+			if(r.readyState != 4 || r.status != 200) return;
+			RPG.story.pages = JSON.parse(r.responseText);
+			if(RPG.story.pages.length) {
+				RPG.story.scene = clone(RPG.story.pages[RPG.story.pages.length - 1].scene);
+				RPG.story.title = clone(RPG.story.pages[RPG.story.pages.length - 1].title);
+				RPG.player1.name = RPG.story.pages[0].player1 || "";
+				RPG.player2.name = RPG.story.pages[0].player2 || "";
+			}
+			document.querySelector("#room").classList.toggle("hidden", true);
+			document.querySelector("#story").classList.toggle("hidden", false);
+			renderpages();
+		};
+		r.send();
+	}
 }
 
 window.addEventListener("load", function() {
@@ -696,10 +716,13 @@ window.addEventListener("load", function() {
 	});
 	// restart
 	document.querySelector("#restart").addEventListener("click", function(e) {
-		e.preventDefault();
-		e.stopPropagation();
-		init();
-		//window.location = window.location;
+		if(window.location.hash) {
+			window.location.pathname = ".";
+		} else {
+			e.preventDefault();
+			e.stopPropagation();
+			init();
+		}
 	});
 
 	document.querySelector("#localradio").addEventListener("change", function() {
